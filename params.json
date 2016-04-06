@@ -1,6 +1,6 @@
 {
   "name": "Activexperts network monitor powershellmodule",
   "tagline": "Powershell Module for ActiveXperts Network Monitor Manager",
-  "body": "This module contains Powershell cmdlets for ActiveXperts Network Monitor application.  I originally developed this as I wanted to script placing the rules and monitors into maintenance mode so they wouldn't flood my email during a deployment.  After finding nothing helpful online, I stumbled upon some examples included with the software.  From there it was only a matter of finding the correct .Net modules and running with it.\r\n\r\nEnjoy\r\n\r\nJeff",
+  "body": "This module contains Powershell cmdlets for ActiveXperts Network Monitor application.  I originally developed this as I wanted to script placing the rules and monitors into maintenance mode so they wouldn't flood my email during a deployment.  After finding nothing helpful online, I stumbled upon some examples included with the software.  From there it was only a matter of finding the correct .Net modules and running with it.\r\n\r\nEnjoy\r\n\r\nJeff\r\n\r\n[Back to Home](http://jeffbuenting.github.io)",
   "note": "Don't delete this file! It's used internally to help with page regeneration."
 }
