@@ -37,8 +37,13 @@ Function Get-AXNMRule {
 
     [CmdletBinding()]
     Param (
+        [Parameter (ParameterSetName = "CheckType")]
         [ValidateSet( 'ALL','CHECKTYPE_ADOSQL','CHECKTYPE_CPU','CHECKTYPE_DIRSIZE','CHECKTYPE_DISKS','CHECKTYPE_DISKSPACE','CHECKTYPE_DNS','CHECKTYPE_DOOR','CHECKTYPE_EVENTLOG','CHECKTYPE_FILE','CHECKTYPE_FLOPPY','CHECKTYPE_FOLDER','CHECKTYPE_FTP','CHECKTYPE_HTTP','CHECKTYPE_HUMIDITY','CHECKTYPE_ICMP','CHECKTYPE_IMAP','CHECKTYPE_LIGHT','CHECKTYPE_MEMORY','CHECKTYPE_MOTION','CHECKTYPE_MSMQ','CHECKTYPE_MSTSE','CHECKTYPE_NNTP','CHECKTYPE_NTP','CHECKTYPE_ODBC','CHECKTYPE_ORACLE','CHECKTYPE_POP3','CHECKTYPE_POWER','CHECKTYPE_PRINTER','CHECKTYPE_PROCESS','CHECKTYPE_REGISTRY','CHECKTYPE_RESISTANCE','CHECKTYPE_RSH','CHECKTYPE_SERVICE','CHECKTYPE_SMOKE','CHECKTYPE_SMTP','CHECKTYPE_SNMPGET','CHECKTYPE_SNMPTRAPRECEIVE','CHECKTYPE_SSH','CHECKTYPE_SWITCHNC','CHECKTYPE_SWITCHNO','CHECKTYPE_TCPIP','CHECKTYPE_TEMPERATURE','CHECKTYPE_UNDEFINED','CHECKTYPE_VBSCRIPT','CHECKTYPE_WETNESS' )]
-        [String[]]$CheckType = 'ALL'
+        [String[]]$CheckType = 'ALL',
+
+        [Parameter (ParameterSetName = "ID",Mandatory = $True)]
+        [String]$ID
+
     )
 
     # ----- Get the NM Config object and open the database
@@ -53,22 +58,31 @@ Function Get-AXNMRule {
 
     $NMConfig.Open()
     
-    foreach ( $Check in $CheckType ) {
-        Write-Verbose "Getting the following Rule Types:"
-        if ( $Check.Tolower() -eq 'all' ) {
-                Write-Verbose "----- All"
-                $NMCheck = $NMConfig.FindFirstNode( "Type >= 0" )
-            }
-            else {
-                Write-Verbose "----- $Check"
+    Switch ( $PSCmdlet.ParameterSetName ) {
+        'CheckType' {
+            foreach ( $Check in $CheckType ) {
+                Write-Verbose "Getting the following Rule Types:"
+                if ( $Check.Tolower() -eq 'all' ) {
+                        Write-Verbose "----- All"
+                        $NMCheck = $NMConfig.FindFirstNode( "Type >= 0" )
+                    }
+                    else {
+                        Write-Verbose "----- $Check"
                     
-                $NMNode = $NMConfig.FindFirstNode( "Type = $($NMConstants."$Check")" )
+                        $NMNode = $NMConfig.FindFirstNode( "Type = $($NMConstants."$Check")" )
+                }
+
+                Do {
+                    Write-Output $NMNode
+                    $NMNode = $NMConfig.FindNextNode()
+                } While ( $NMConfig.LastError -eq 0 )
+            }
         }
 
-        Do {
+        'ID' {
+            $NMNode = $NMConfig.FindFirstNode( "ID = $ID" )
             Write-Output $NMNode
-            $NMNode = $NMConfig.FindNextNode()
-        } While ( $NMConfig.LastError -eq 0 )
+        }
     }
    
     Write-Verbose "Closing the Network Monitoring Database"
