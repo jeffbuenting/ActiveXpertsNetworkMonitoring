@@ -503,7 +503,9 @@ Function New-AXNMMaintenanceSchedule {
                 $NMConfig = New-Object -ComObject ActiveXperts.NMConfig -ErrorAction Stop 
             }
             catch {
-                Throw "Get-AXNMRule : $($_.Exception.message)`nCheck if ActiveXperts Network Monitoring is installed on $env:ComputerName"
+                $EXceptionMessage = $_.Exception.Message
+                $ExceptionType = $_.exception.GetType().fullname
+                Throw "Get-AXNMRule : Check if ActiveXperts Network Monitoring is installed on $env:ComputerName`n`n     $ExceptionMessage`n`n     Exception : $ExceptionType"
         }
         $NMConfig.Open()
     }
@@ -618,6 +620,37 @@ Function Remove-AXNMMaintenanceSchedule {
                             Throw "Remove-AXNMMaintenanceSchedule : Cannot remove a Global schedule from a Rule. `n$_.Exception.Message"
                     }
                 
+                }
+                elseif ( $M.Scope -ne 'Global' ) {
+                    Write-Verbose "No Rule specified.  Taking rule from Schedule object scope"
+
+                    $RuleCheck = Get-AXNMRule | where Displayname -eq $M.Scope
+
+                    Write-Verbose "Rule $($RuleCheck.ID)"
+
+
+                    # ----- Load Rule from the Database modify and save
+                    $Node = $NMConfig.LoadNode( $RuleCheck.ID )
+                    
+                    # ----- Split the schedule and Loop thru and skip the schedule being deleted
+                    $List = $NUll
+                    ($Node.Maintenancelist) -split '\|' | Foreach {
+                        if ( $_ ) {
+                            Write-Verbose "Converting $_"
+                            $MS = $_ | Convert-AXNMMaintScheduletoDate
+                                 
+                            if ( ($MS.Date -ne $M.date) -and ($MS.Duration -ne $M.Duration ) ) {
+                                Write-Verbose "     Keeping $MS"
+                                # ----- Add divider if list is not null
+                                if ( $List -ne $Null ) { $List += '|' }
+                                $List += "$_"
+                            }
+                        }
+                    }
+                           
+                    $Node.MaintenanceList = $List
+                                          
+                    $NMConfig.SaveNode( $Node ) 
                 }
                 else {
                     Write-Verbose "Removing Global Maintenance Schedule"
