@@ -288,7 +288,7 @@ Function Get-AXNMMaintenanceSchedule {
 
     [CmdletBinding()]
     Param (
-        [Parameter(Mandatory=$True,ValueFromPipeline=$True)]
+        [Parameter(ValueFromPipeline=$True)]
         [PSObject[]]$Rule
     )
 
@@ -299,7 +299,9 @@ Function Get-AXNMMaintenanceSchedule {
                 $NMConfig = New-Object -ComObject ActiveXperts.NMConfig -ErrorAction Stop 
             }
             catch {
-                Throw "Get-AXNMRule : $($_.Exception.message)`nCheck if ActiveXperts Network Monitoring is installed on $env:ComputerName"
+                $EXceptionMessage = $_.Exception.Message
+                $ExceptionType = $_.exception.GetType().fullname
+                Throw "Get-AXNMRule : Check if ActiveXperts Network Monitoring is installed on $env:ComputerName`n`n     $ExceptionMessage`n`n     Exception : $ExceptionType" 
         }
         $NMConfig.Open()
     }
@@ -312,17 +314,25 @@ Function Get-AXNMMaintenanceSchedule {
 
                     # -----  Get the Maintenance for the Overall tool
                     ($NMConfig.LoadMaintenanceSettings()) -split '\|' | foreach {
-                        $MaintSched = $_ | Convert-AXNMMaintScheduletoDate
-                        $MaintSched | Add-Member -MemberType NoteProperty -Name Scope -Value Global
-                        Write-Output $MaintSched
+                        # ----- Check if Current mainlist is null.  Ignore if it is.  For some reason an empty line is returned if no maintenance schedule is defined.
+                        if ( $_ ) {
+                            $MaintSched = $_ | Convert-AXNMMaintScheduletoDate
+                            $MaintSched | Add-Member -MemberType NoteProperty -Name Scope -Value Global
+                            $MaintSched | Add-Member -MemberType NoteProperty -Name RuleName -Value $NMC.DisplayName
+                            Write-Output $MaintSched
+                        }
                     }
 
                     # ----- Get the Schedule for the NM Check
 
                     ($NMC.MaintenanceList) -Split '\|' | foreach {
-                        $MaintSched = $_ | Convert-AXNMMaintScheduletoDate
-                        $MaintSched | Add-Member -MemberType NoteProperty -Name Scope -Value $NMC.DisplayName
-                        Write-Output $MaintSched
+                        # ----- Check if Current mainlist is null.  Ignore if it is.  For some reason an empty line is returned if no maintenance schedule is defined.
+                        if ( $_ ) {
+                            $MaintSched = $_ | Convert-AXNMMaintScheduletoDate
+                            $MaintSched | Add-Member -MemberType NoteProperty -Name Scope -Value $NMC.DisplayName
+                            $MaintSched | Add-Member -MemberType NoteProperty -Name RuleName -Value $NMC.DisplayName
+                            Write-Output $MaintSched
+                        }
                     }
 
                     Write-Verbose "-----"
@@ -332,9 +342,13 @@ Function Get-AXNMMaintenanceSchedule {
                 Write-Verbose "Getting only the Global Maintenance Schedule"
                  # -----  Get the Maintenance for the Overall tool
                 ($NMConfig.LoadMaintenanceSettings()) -split '\|' | foreach {
-                    $MaintSched = $_ | Convert-AXNMMaintScheduletoDate
-                    $MaintSched | Add-Member -MemberType NoteProperty -Name Scope -Value Global
-                    Write-Output $MaintSched
+                    # ----- Check if Current mainlist is null.  Ignore if it is.  For some reason an empty line is returned if no maintenance schedule is defined.
+                    if ( $_ ) {
+                        $MaintSched = $_ | Convert-AXNMMaintScheduletoDate
+                        $MaintSched | Add-Member -MemberType NoteProperty -Name Scope -Value Global
+                        $MaintSched | Add-Member -MemberType NoteProperty -Name RuleName -Value $NMC.DisplayName
+                        Write-Output $MaintSched
+                    }
                 }
         }
     }
