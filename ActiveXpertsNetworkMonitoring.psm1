@@ -312,30 +312,36 @@ Function Get-AXNMMaintenanceSchedule {
                 Foreach ( $NMC in $Rule ) {
                     Write-Verbose "Getting Maintenance Schedule for $($NMC.DisplayName)"
 
-                    # -----  Get the Maintenance for the Overall tool
-                    ($NMConfig.LoadMaintenanceSettings()) -split '\|' | foreach {
-                        # ----- Check if Current mainlist is null.  Ignore if it is.  For some reason an empty line is returned if no maintenance schedule is defined.
-                        if ( $_ ) {
-                            $MaintSched = $_ | Convert-AXNMMaintScheduletoDate
-                            $MaintSched | Add-Member -MemberType NoteProperty -Name Scope -Value Global
-                            $MaintSched | Add-Member -MemberType NoteProperty -Name RuleName -Value $NMC.DisplayName
-                            Write-Output $MaintSched
+                    # ----- Only return the schedules used.  Global (0) or local (255)
+                    if ( $NMC.MaintenanceServer -eq 0 ) {
+                            Write-Verbose "Getting Global maintenance Schedule"
+
+                            # -----  Get the Maintenance for the Overall tool
+                            ($NMConfig.LoadMaintenanceSettings()) -split '\|' | foreach {
+                                # ----- Check if Current mainlist is null.  Ignore if it is.  For some reason an empty line is returned if no maintenance schedule is defined.
+                                if ( $_ ) {
+                                    $MaintSched = $_ | Convert-AXNMMaintScheduletoDate
+                                    $MaintSched | Add-Member -MemberType NoteProperty -Name Scope -Value Global
+                                    $MaintSched | Add-Member -MemberType NoteProperty -Name RuleName -Value $NMC.DisplayName
+                                    Write-Output $MaintSched
+                                }
+                            }
                         }
+                        else {
+                            Write-verbose "Local Rule Maintenance Schedule"
+
+                            # ----- Get the Schedule for the NM Check
+
+                            ($NMC.MaintenanceList) -Split '\|' | foreach {
+                                # ----- Check if Current mainlist is null.  Ignore if it is.  For some reason an empty line is returned if no maintenance schedule is defined.
+                                if ( $_ ) {
+                                    $MaintSched = $_ | Convert-AXNMMaintScheduletoDate
+                                    $MaintSched | Add-Member -MemberType NoteProperty -Name Scope -Value $NMC.DisplayName
+                                    $MaintSched | Add-Member -MemberType NoteProperty -Name RuleName -Value $NMC.DisplayName
+                                    Write-Output $MaintSched
+                                }
+                            }
                     }
-
-                    # ----- Get the Schedule for the NM Check
-
-                    ($NMC.MaintenanceList) -Split '\|' | foreach {
-                        # ----- Check if Current mainlist is null.  Ignore if it is.  For some reason an empty line is returned if no maintenance schedule is defined.
-                        if ( $_ ) {
-                            $MaintSched = $_ | Convert-AXNMMaintScheduletoDate
-                            $MaintSched | Add-Member -MemberType NoteProperty -Name Scope -Value $NMC.DisplayName
-                            $MaintSched | Add-Member -MemberType NoteProperty -Name RuleName -Value $NMC.DisplayName
-                            Write-Output $MaintSched
-                        }
-                    }
-
-                    Write-Verbose "-----"
                 }
             }
             else {
@@ -490,6 +496,10 @@ Function New-AXNMMaintenanceSchedule {
         [String]$MaintenanceSched,
 
         [Parameter(Mandatory=$True)]
+        [ValidateScript ( {
+            # ----- Must be duration larger than one hour
+            $_ -ge 1
+        } ) ]
         [String]$Duration
     )
 
@@ -518,6 +528,9 @@ Function New-AXNMMaintenanceSchedule {
                 $Node = $NMConfig.LoadNode( $Rule.ID )
                 #$Node | FL *
                 $Node.Maintenancelist += "|$NewMaintSched"
+
+                # ----- Maintenance Server set to 255 tells the rule to override the Global Rules
+                $Node.MaintenanceServer = 255
                 $NMConfig.SaveNode( $Node )
                 
             }
@@ -613,6 +626,9 @@ Function Remove-AXNMMaintenanceSchedule {
                             }
                            
                             $Node.MaintenanceList = $List
+
+                            #----- Set to Global maintenance list if no local ones exist anymore
+                            if ( $List -eq $Null ) { $Node.MaintenanceList = 0 }
                                           
                             $NMConfig.SaveNode( $Node )
                         }
@@ -649,6 +665,9 @@ Function Remove-AXNMMaintenanceSchedule {
                     }
                            
                     $Node.MaintenanceList = $List
+                    
+                    #----- Set to Global maintenance list if no local ones exist anymore
+                    if ( $List -eq $Null ) { $Node.MaintenanceList = 0 }
                                           
                     $NMConfig.SaveNode( $Node ) 
                 }
