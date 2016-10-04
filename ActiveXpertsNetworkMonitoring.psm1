@@ -578,7 +578,7 @@ Function New-AXNMMaintenanceSchedule {
             catch {
                 $EXceptionMessage = $_.Exception.Message
                 $ExceptionType = $_.exception.GetType().fullname
-                Throw "Get-AXNMRule : Check if ActiveXperts Network Monitoring is installed on $env:ComputerName`n`n     $ExceptionMessage`n`n     Exception : $ExceptionType"
+                Throw "New-AXNMMaintenanceSchedule : Check if ActiveXperts Network Monitoring is installed on $env:ComputerName`n`n     $ExceptionMessage`n`n     Exception : $ExceptionType"
         }
         $NMConfig.Open()
     }
@@ -589,8 +589,19 @@ Function New-AXNMMaintenanceSchedule {
                 Write-Verbose "New Maintenance Schedule: $NewMaintSched"
                 # ----- Load Rule from the Database modify and save
                 $Node = $NMConfig.LoadNode( $Rule.ID )
-                #$Node | FL *
-                $Node.Maintenancelist += "|$NewMaintSched"
+
+                # ----- Check if there is an existing maint sched.
+                # ----- Again with the 0 issue when the list is blank
+                Write-Verbose "List == $($Node.MaintenanceList)"
+                if (( $Node.Maintenancelist ) -and ( $Node.MaintenanceList -ne 0 )) {
+                        Write-verbose "Adding to existing schedule list"
+                        $Node.Maintenancelist += "|$NewMaintSched"
+                    }
+                    else {
+                        Write-Verbose "Adding first schedule"
+                        $Node.Maintenancelist = $NewMaintSched
+                }
+                Write-verbose "MaintenanceList = $($Node.MaintenanceList)"
 
                 # ----- Maintenance Server set to 255 tells the rule to override the Global Rules
                 $Node.MaintenanceServer = 255
@@ -602,7 +613,18 @@ Function New-AXNMMaintenanceSchedule {
                 Write-Verbose "New Maintenance Schedule: $NewMaintSched"
                 # ----- Load schedules from the Database modify and save
                 $Sched = $NMConfig.LoadMaintenanceSettings()
-                $Sched += "|$NewMaintSched"
+                # ----- Check if there is an existing maint sched.
+                # ----- Again with the 0 issue when the list is blank
+                if (( $Sched ) -and ( $Sched -ne 0 )) {
+                        Write-verbose "Adding to existing schedule list"
+                        $Sched += "|$NewMaintSched"
+                    }
+                    else {
+                        Write-Verbose "Adding first schedule"
+                        $Sched = "$NewMaintSched"
+                }
+                Write-verbose "Sched List = $Sched"
+
                 $NMConfig.SaveMaintenanceSettings( $Sched )
         }
     }
@@ -693,7 +715,7 @@ Function Remove-AXNMMaintenanceSchedule {
                             #----- Set to Global maintenance list if no local ones exist anymore
                             Write-Verbose "List = $List"
 
-                            if ( $List -eq $Null ) { $Node.MaintenanceList = 0 }
+                            if ( $List -eq $Null ) { $Node.MaintenanceServer = 0 }
                                           
                             $NMConfig.SaveNode( $Node )
                         }
@@ -717,24 +739,47 @@ Function Remove-AXNMMaintenanceSchedule {
                     $List = $NUll
                     ($Node.Maintenancelist) -split '\|' | Foreach {
                         if ( $_ ) {
-                            Write-Verbose "Converting $_"
+                            Write-Verbose "sched to convert $_"
                             $MS = $_ | Convert-AXNMMaintScheduletoDate
                                  
                             if ( ($MS.Date -ne $M.date) -and ($MS.Duration -ne $M.Duration ) ) {
-                                Write-Verbose "     Keeping $MS"
-                                # ----- Add divider if list is not null
-                                if ( $List -ne $Null ) { $List += '|' }
-                                $List += "$_"
+                                    Write-Verbose "     Keeping $MS"
+                                    # ----- Add divider if list is not null
+                                    if ( $List -ne $Null ) { $List += '|' }
+                                    $List += "$_"
+                                }
+                                else {
+                                    Write-verbose "     Deleting this Maint Schedule"
                             }
                         }
                     }
-                           
-                    $Node.MaintenanceList = $List
+                      
+                    Write-verbose "New list of Scheds = $($List | out-string)"
+                    write-verbose "one"
+
+                    # ----- Gotta watch out for that 0 case
+                    if ( $List = 0 ) { 
+                        Write-Verbose "Setting List to Null"
+                        $List = $Null 
+                    }
                     
+                    Write-Verbose "Two"       
+                    $Node.MaintenanceList = $List
+                    write-verbose "L = $List"
+                    Write-Verbose "Three"
+
                     #----- Set to Global maintenance list if no local ones exist anymore
-          #         if ( $List -eq $Null ) { $Node.MaintenanceList = 0 }
-                                          
-                    $NMConfig.SaveNode( $Node ) 
+                    if ( $List -eq $Null ) { 
+                            Write-Verbose "Setting to use global maint scheds"
+                            $Node.MaintenanceServer = 0 
+                        }
+                        Else {
+                            Write-verbose "List is Not Null = $($List | out-string)"
+                    }
+                    
+                    Write-Verbose "Saving Node"                     
+                    $NMConfig.SaveNode( $Node )
+                     
                 }
                 else {
                     Write-Verbose "Removing Global Maintenance Schedule"
