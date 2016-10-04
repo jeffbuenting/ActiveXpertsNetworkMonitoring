@@ -90,6 +90,68 @@ Function Get-AXNMRule {
 }
 
 #----------------------------------------------------------------------------------
+
+Function Set-AXNMRule {
+
+<#
+    .Synopsis
+        Edit an ActiveXpert Network Monitoring Rule
+
+    .Description
+        Edit or make changes to a monitoring rule
+
+    .Parameter Rule
+        Object representing a monitoring Rule.  Use Get-AXNMRule.
+
+    .Parameter OverrideGlobalMaintenance
+        Overrides the Servers maintanance schedules and uses the individul schedule for this rul.
+
+    .Parameter UseGlobalMaintance
+        Sets the rule to use the Global Maintanace schedules.
+
+    .Note
+        Author : Jeff Buenting
+        Date : 2016 Oct 4
+#>
+    
+    [CmdletBinding()]
+    Param (
+        [Parameter(ValueFromPipeline=$True)]
+        [PSObject[]]$Rule,
+
+        [Parameter ( ParameterSetName = 'OverrideGlobalMaint' )]
+        [Switch]$OverrideGlobalMaintenance,
+
+        [Parameter ( ParameterSetName = 'UseGlobalMaint' )]
+        [Switch]$UseGlobalMaintenance
+    )
+
+    Begin {
+        # ----- Get the NM Config object and open the database
+        Write-Verbose "Open the Network MOnitoring Database"
+        Try {
+                $NMConfig = New-Object -ComObject ActiveXperts.NMConfig -ErrorAction Stop 
+            }
+            catch {
+                $EXceptionMessage = $_.Exception.Message
+                $ExceptionType = $_.exception.GetType().fullname
+                Throw "Get-AXNMRule : Check if ActiveXperts Network Monitoring is installed on $env:ComputerName`n`n     $ExceptionMessage`n`n     Exception : $ExceptionType" 
+        }
+        $NMConfig.Open()
+    }
+
+    Process {
+        Foreach ( $NMR in $Rule ) {
+            Write-Verbose "Editing Rule $($NMR.DisplayName)"
+            if ( $OverrideGlobalMaintenance ) { $NMR.MaintenanceServer = 255 }
+            if ( $UseGlobalMaintenance ) { $NMR.MaintenanceServer = 0 }
+
+            $NMR.SaveNode( $NMR )
+        }
+    }
+}
+
+#----------------------------------------------------------------------------------
 # Maintenance Schedule Cmdlets
 #----------------------------------------------------------------------------------
 
@@ -308,7 +370,7 @@ Function Get-AXNMMaintenanceSchedule {
 
     Process {
         if ( $Rule ) {
-                Write-Verbose "Getting Maintenance Schedule for Rules as well as Global"
+                Write-Verbose "Getting Maintenance Schedule for Rules"
                 Foreach ( $NMC in $Rule ) {
                     Write-Verbose "Getting Maintenance Schedule for $($NMC.DisplayName)"
 
@@ -334,7 +396,8 @@ Function Get-AXNMMaintenanceSchedule {
 
                             ($NMC.MaintenanceList) -Split '\|' | foreach {
                                 # ----- Check if Current mainlist is null.  Ignore if it is.  For some reason an empty line is returned if no maintenance schedule is defined.
-                                if ( $_ ) {
+                                # ----- Sometimes when Maintenanceserver = 255, the Maintenancelist will be 0.  This should be ignored and not included in the schedules.
+                                if (( $_ ) -and ($_ -ne 0)) {
                                     $MaintSched = $_ | Convert-AXNMMaintScheduletoDate
                                     $MaintSched | Add-Member -MemberType NoteProperty -Name Scope -Value $NMC.DisplayName
                                     $MaintSched | Add-Member -MemberType NoteProperty -Name RuleName -Value $NMC.DisplayName
@@ -628,6 +691,8 @@ Function Remove-AXNMMaintenanceSchedule {
                             $Node.MaintenanceList = $List
 
                             #----- Set to Global maintenance list if no local ones exist anymore
+                            Write-Verbose "List = $List"
+
                             if ( $List -eq $Null ) { $Node.MaintenanceList = 0 }
                                           
                             $NMConfig.SaveNode( $Node )
@@ -667,7 +732,7 @@ Function Remove-AXNMMaintenanceSchedule {
                     $Node.MaintenanceList = $List
                     
                     #----- Set to Global maintenance list if no local ones exist anymore
-                    if ( $List -eq $Null ) { $Node.MaintenanceList = 0 }
+          #         if ( $List -eq $Null ) { $Node.MaintenanceList = 0 }
                                           
                     $NMConfig.SaveNode( $Node ) 
                 }
