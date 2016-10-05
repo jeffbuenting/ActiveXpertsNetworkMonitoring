@@ -755,23 +755,23 @@ Function Remove-AXNMMaintenanceSchedule {
                     }
                       
                     Write-verbose "New list of Scheds = $($List | out-string)"
-                    write-verbose "one"
-
+                   
                     # ----- Gotta watch out for that 0 case
                     if ( $List = 0 ) { 
                         Write-Verbose "Setting List to Null"
                         $List = $Null 
                     }
-                    
-                    Write-Verbose "Two"       
+                           
                     $Node.MaintenanceList = $List
                     write-verbose "L = $List"
-                    Write-Verbose "Three"
+                  
+                    $Node.MaintenanceList = $List
 
                     #----- Set to Global maintenance list if no local ones exist anymore
-                    if ( $List -eq $Null ) { 
+                    if ( ($List -eq $Null) -or ($List = '0') ) { 
                             Write-Verbose "Setting to use global maint scheds"
                             $Node.MaintenanceServer = 0 
+                            $Node.MaintenanceList = $Null
                         }
                         Else {
                             Write-verbose "List is Not Null = $($List | out-string)"
