@@ -5,10 +5,10 @@ This module can be used to interact with ActiveXperts Network Monitor Manager.  
 
 Module contains the following Cmdlets
 
-Get-AXNMRule
-Get-AXNMMaintenanceSchedule
-New-AXNMMaintenanceSchedule
-Remove-AXNMAMaintenanceSchedule
+Get-AXNMRule    
+Get-AXNMMaintenanceSchedule    
+New-AXNMMaintenanceSchedule    
+Remove-AXNMAMaintenanceSchedule    
 
 For the life of me I cannot figure out why adding a maintenance schedule to an individual rule does not work.  It looks the same as when I do it via the gui.  Will have to work on that some day.
 
