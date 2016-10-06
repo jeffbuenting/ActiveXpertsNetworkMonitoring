@@ -275,7 +275,7 @@ Function Convert-AXNMMaintScheduletoDate {
 
         Switch ( $MD[0].substring(0,1) ) {
             'e' {
-                Write-Verbose "Every Day of the week"
+                Write-Verbose "Every week"
                 Switch ( $MD[0].substring(1) ) {
                     '1000000' {
                         Write-Verbose "     on Sunday"
@@ -319,7 +319,8 @@ Function Convert-AXNMMaintScheduletoDate {
             Date = $Day
             Duration = $MD[2]
         }
-        #Write-Verbose $($MaintSched | out-string )
+        
+        Write-Verbose "Returning : $($MaintSched | out-string )"
         Write-Output $MaintSched
     }
 }
@@ -563,7 +564,9 @@ Function New-AXNMMaintenanceSchedule {
             # ----- Must be duration larger than one hour
             $_ -ge 1
         } ) ]
-        [String]$Duration
+        [String]$Duration,
+
+        [Switch]$PassThru
     )
 
     Begin {
@@ -626,6 +629,16 @@ Function New-AXNMMaintenanceSchedule {
                 Write-verbose "Sched List = $Sched"
 
                 $NMConfig.SaveMaintenanceSettings( $Sched )
+        }
+
+        if ( $Passthru ) {
+            Write-Verbose "Returning the new Maintenance Schedule"
+
+            # ----- Convert New Maint sched to readable format and return
+            $NewMS = $NewMaintSched| Convert-AXNMMaintScheduletoDate
+            $NewMS | Add-Member -MemberType NoteProperty -Name Scope -Value Global
+            $NewMS | Add-Member -MemberType NoteProperty -Name RuleName -Value $NMC.DisplayName
+            Write-Output $NewMS
         }
     }
 
@@ -791,11 +804,13 @@ Function Remove-AXNMMaintenanceSchedule {
                             # ----- Load schedules from the Database modify and save
                             # ----- Split the schedule and Loop thru and skip the schedule being deleted
                             $List = $NUll
-                            $Sched = $NMConfig.LoadMaintenanceSettings()
-                            ($Sched.LoadMaintenanceSettings()) -split '\|' | Foreach {
+
+                            ($NMConfig.LoadMaintenanceSettings()) -split '\|' | Foreach {
                                 $MS = $_ | Convert-AXNMMaintScheduletoDate
                                  
-                                if ( ($MS.Date -ne $M.date) -and ($MS.Duration -ne $M.Duration ) ) {
+                                write-Verbose "Does $($M.Date) = "
+                                Write-Verbose "     $($MS.Date)"
+                                if ( ($MS.Date -ne $M.date) -or ($MS.Duration -ne $M.Duration ) ) {
                                     Write-Verbose "     Keeping $MS"
                                     # ----- Add divider if list is not null
                                     if ( $List -ne $Null ) { $List += '|' }
