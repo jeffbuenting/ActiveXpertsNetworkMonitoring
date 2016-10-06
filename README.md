@@ -17,6 +17,7 @@ But, the New-AXNMMaintenanceschedule does set global manitance.  and Removes it.
 To run remotely wrap the commands in Invoke-Command
 
 
+```Powershell
 $MaintSched = invoke-command -Computername ServerA -scriptblock { 
     import-module ActiveXpertsNetworkMonitoring -force
     $S = New-AXNMMaintenanceSchedule -MaintenanceSched (Get-Date) -Duration 3 -Passthru 
@@ -28,6 +29,7 @@ $MaintSched
 invoke-command -Computername ServerA -scriptblock {
     import-module ActiveXpertsNetworkMonitoring -force
     $Using:MaintSched | Remove-AXNMMaintenanceSchedule 
-}​
+}
+```
 
 where ServerA is the server that ActiveXpert Network Monitor is installed.
