@@ -257,7 +257,7 @@ Function Convert-AXNMMaintScheduletoDate {
     .Parameter MaintDate
         Maintenance date in ActiveXperts NM format
 
-    .Note
+    .Notes
         Author: Jeff Buenting
         Date: 2016 FEB 9
 #>
@@ -366,6 +366,7 @@ Function Get-AXNMMaintenanceSchedule {
                 $ExceptionType = $_.exception.GetType().fullname
                 Throw "Get-AXNMRule : Check if ActiveXperts Network Monitoring is installed on $env:ComputerName`n`n     $ExceptionMessage`n`n     Exception : $ExceptionType" 
         }
+        
         $NMConfig.Open()
     }
 
@@ -415,6 +416,7 @@ Function Get-AXNMMaintenanceSchedule {
                     # ----- Check if Current mainlist is null.  Ignore if it is.  For some reason an empty line is returned if no maintenance schedule is defined.
                     if ( $_ ) {
                         $MaintSched = $_ | Convert-AXNMMaintScheduletoDate
+
                         $MaintSched | Add-Member -MemberType NoteProperty -Name Scope -Value Global
                         $MaintSched | Add-Member -MemberType NoteProperty -Name RuleName -Value $NMC.DisplayName
                         Write-Output $MaintSched
@@ -541,7 +543,7 @@ Function New-AXNMMaintenanceSchedule {
 
         New-AXNMMaintenanceSchedule -date 'Every Thursday @ 12:00:00 AM' -Duration 2 
 
-    .Link
+    .Notes
         Author: Jeff Buenting
         Date: 2016 FEB 10
 #>
@@ -635,7 +637,7 @@ Function New-AXNMMaintenanceSchedule {
             Write-Verbose "Returning the new Maintenance Schedule"
 
             # ----- Convert New Maint sched to readable format and return
-            $NewMS = $NewMaintSched| Convert-AXNMMaintScheduletoDate
+            $NewMS = $NewMaintSched | Convert-AXNMMaintScheduletoDate
             $NewMS | Add-Member -MemberType NoteProperty -Name Scope -Value Global
             $NewMS | Add-Member -MemberType NoteProperty -Name RuleName -Value $NMC.DisplayName
             Write-Output $NewMS
