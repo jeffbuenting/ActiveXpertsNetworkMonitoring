@@ -57,6 +57,53 @@ InModuleScope ActiveXpertsNetworkMonitoring {
             }
         }
     }
+
+    #-------------------------------------------------------------------------------------
+
+    Write-Output "`n`n"
+
+    Describe "AxtiveXperts : Convert-AXNMDatetoMaintenanceSchedule" {
+       Context "Help" {
+            $H = Help Convert-AXNMDatetoMaintenanceSchedule -Full
+        
+            # ----- Help Tests
+            It "has Synopsis Help Section" {
+                $H.Synopsis | Should Not BeNullorEmpty
+            }
+
+            It "has Description Help Section" {
+                $H.Description | Should Not BeNullorEmpty
+            }
+
+            It "has Parameters Help Section" {
+                $H.Parameters | Should Not BeNullorEmpty
+            }
+
+            # Examples - Remarks (small description that comes with the example)
+            foreach ($Example in $H.examples.example)
+            {
+                it "Example - Remarks on $($Example.Title)"{
+                    $Example.remarks | Should not BeNullOrEmpty
+                }
+            }
+
+            It "has Notes Help Section" {
+                $H.alertSet | Should Not BeNullorEmpty
+            }
+        } 
+
+        Context Execution {
+            It "Throws an error if invalid input is given" {
+                { Convert-AXNMDatetoMaintenanceSchedule -MaintenanceSched "funday @ 12:00 pm" -Duration 2 } | Should Throw
+            }
+        }
+        
+        Context Output {
+            It "returns a string in the format Day;Time;Duration" {
+                Convert-AXNMDatetoMaintenanceSchedule -MaintenanceSched "every tuesday @ 12:00 pm" -Duration 2 | Should be 'e0010000;234000;2'
+            }
+        } 
+    }
 }
 
 #-------------------------------------------------------------------------------------
@@ -104,21 +151,66 @@ Describe "AxtiveXperts : New-AXNMMaintenanceSchedule" {
         }
     } 
 
+    $Rule = New-Object -TypeName PSObject -Property (@{
+        DisplayName = 'Test Rule'
+        MaintenanceServer = 0
+        MaintenanceList = "e0010000;270000"
+    })    
+
     Context Execution {
+
+        Mock -CommandName New-Object -MockWith { Throw "Test Error" }
+
         It "Should throw an error if there is a problem creating an ActiveXpert COM Object" {
-        } -Pending
+            { New-AXNMMaintenanceSchedule -Rule $Rule -MaintenanceSched 'every tuesday @ 1:00 am'-Duration 1 } | Should Throw
+        } 
 
 
     }
 
     Context Output {
-        It "Does not return anything by default" {
 
-        } -Pending
+        Mock -CommandName New-Object -ModuleName ActiveXpertsNetworkMonitoring -ParameterFilter { $ComObject -eq 'ActiveXperts.NMConfig' } -MockWith {
+            $OBJ = New-Object -TypeName PSObject -Property (@{
+                    ConfigDatabase = "Connection String"
+                    LastError = 0
+                })
+        
+            $OBJ | Add-Member -MemberType ScriptMethod -Name Close -Value { }
+            $OBJ | Add-Member -MemberType ScriptMethod -Name LoadMaintenanceSettings -Value {
+                # ----- Should return a string of Maintenance windows separated by |
+                Write-Output "e0100000;270000;1|e0010000;27000;1|e0000100;270000;1"
+            }
+            $OBJ | Add-Member -memberType ScriptMethod -Name LoadNode -Value {}
+            $OBJ | Add-Member -MemberType ScriptMethod -Name Open -Value { }
+            $OBJ | Add-Member -MemberType ScriptMethod -Name SaveMaintenanceSettings -Value { }
+            $OBJ | Add-Member -MemberType ScriptMethod -Name SaveNode -Value { }
+            
 
-        It "returns New maintenance object if Passthru specified" {
+            Write-Output $OBJ
+        }
 
-        } -Pending
+
+
+        # ----- Maintenance Windows for Rule
+
+        It "Rule : Does not return anything by default" {
+            New-AXNMMaintenanceSchedule -Rule $Rule -MaintenanceSched "every tuesday @ 10:00 am" -Duration 4 | Should BeNullOrEmpty
+        }
+
+        It "Rule : Returns New maintenance object if Passthru specified" {
+            New-AXNMMaintenanceSchedule -Rule $Rule -MaintenanceSched "every tuesday @ 10:00 am" -Duration 4 -PassThru | Should beoftype PSObject
+        } 
+
+        # ----- Maintenance Window for Global
+
+        It "Global Maint Sched : Does not return anything by default" {
+            New-AXNMMaintenanceSchedule -MaintenanceSched "every tuesday @ 10:00 am" -Duration 4 | Should BeNullOrEmpty
+        } 
+
+        It "Global Maint Sched : returns New maintenance object if Passthru specified" {
+            New-AXNMMaintenanceSchedule -MaintenanceSched "every tuesday @ 10:00 am" -Duration 4 -PassThru | Should beoftype PSObject
+        }
     }
 }
 

@@ -446,7 +446,10 @@ Function Convert-AXNMDatetoMaintenanceSchedule {
     .Parameter MaintDate
         Maintenance date in ActiveXperts NM format
 
-    .Note
+    .Parameter Duration
+        Lenght of maintenance window
+
+    .Notes
         Author: Jeff Buenting
         Date: 2016 FEB 10
 #>
@@ -498,13 +501,14 @@ Function Convert-AXNMDatetoMaintenanceSchedule {
                 }
             }
 
-            # ----- ActiveXpert Net work Monitoring time is measured in Epoch time.  However for some reason, midnight is Jan 3, 1970 midnight.  UTC.  So convert and mesure from those dates to get the time.
+            # ----- ActiveXpert Network Monitoring time is measured in Epoch time.  However for some reason, midnight is Jan 3, 1970 midnight.  UTC.  So convert and mesure from those dates to get the time.
             $Time = New-TimeSpan -Start "01/01/1970 00:00" -End ((Get-Date "Saturday, January 3, 1970$T" -ErrorAction Stop).ToUniversalTime()) -ErrorAction Stop | Select-Object -ExpandProperty TotalSeconds
         }
         Catch {
             Throw "Convert-AXNMDatetoMaintenanceSchedule : $($_.Exception.Message)"
     }
 
+    # ----- Output the day time and duration in a format AxtiveXtert is expecting.
     Write-Output "$Day;$Time;$Duration"
 
 }
@@ -573,7 +577,11 @@ Function New-AXNMMaintenanceSchedule {
 
     Begin {
         # ----- Don't know why but this date evaluates to back 24 hours.  in ActiveXpert.  To prevent this, adding 24 hours to date.
-        $NewMaintSched = Convert-AXNMDatetoMaintenanceSchedule -MaintenanceSched ((Get-Date $MaintenanceSched).AddDays(1)).toString() -Duration $Duration
+        #$NewMaintSched = Convert-AXNMDatetoMaintenanceSchedule -MaintenanceSched ((Get-Date $MaintenanceSched).AddDays(1)).toString() -Duration $Duration
+
+        $NewMaintSched = Convert-AXNMDatetoMaintenanceSchedule -MaintenanceSched $MaintenanceSched -Duration $Duration
+
+        Write-Verbose "Translated Maint Sched = $NewMaintSched" 
    
         # ----- Get the NM Config object and open the database
         Write-Verbose "Open the Network MOnitoring Database"
@@ -593,7 +601,9 @@ Function New-AXNMMaintenanceSchedule {
                 Write-Verbose "Adding Maintenace schedule for rule: $($Rule.Displayname)"
                 Write-Verbose "New Maintenance Schedule: $NewMaintSched"
                 # ----- Load Rule from the Database modify and save
-                $Node = $NMConfig.LoadNode( $Rule.ID )
+                #$Node = $NMConfig.LoadNode( $Rule.ID )
+                # ----- $Rule should already be a Rule Object.  No need to retrieve it again.
+                $Node = $Rule
 
                 # ----- Check if there is an existing maint sched.
                 # ----- Again with the 0 issue when the list is blank
@@ -606,7 +616,7 @@ Function New-AXNMMaintenanceSchedule {
                         Write-Verbose "Adding first schedule"
                         $Node.Maintenancelist = $NewMaintSched
                 }
-                Write-verbose "MaintenanceList = $($Node.MaintenanceList)"
+                Write-verbose "New MaintenanceList = $($Node.MaintenanceList)"
 
                 # ----- Maintenance Server set to 255 tells the rule to override the Global Rules
                 $Node.MaintenanceServer = 255
@@ -639,7 +649,7 @@ Function New-AXNMMaintenanceSchedule {
             # ----- Convert New Maint sched to readable format and return
             $NewMS = $NewMaintSched | Convert-AXNMMaintScheduletoDate
             $NewMS | Add-Member -MemberType NoteProperty -Name Scope -Value Global
-            $NewMS | Add-Member -MemberType NoteProperty -Name RuleName -Value $NMC.DisplayName
+            $NewMS | Add-Member -MemberType NoteProperty -Name RuleName -Value $NMConfig.DisplayName
             Write-Output $NewMS
         }
     }
