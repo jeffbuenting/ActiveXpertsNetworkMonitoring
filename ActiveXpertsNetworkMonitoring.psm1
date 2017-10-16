@@ -17,20 +17,23 @@ Function Get-AXNMRule {
     .Description
         Returns a monitoring rule from ActiveXpert Network Monitoring.  Rules are also called Checks or Nodes.
 
-    .Parameter RuleType
+    .Parameter CheckType
         Used to filter the results by type of rule.
 
-    .Examples
+    .Parameter ID
+        ID of the rule to retrieve.
+
+    .Example
         Return all rules.
 
         Get-AXNMRule
 
-    .Examples
+    .Example
         Return only the ICMP Rules
 
         Get-AXNMRule -RuleType CHECKTYPE_ICMP
 
-    .Note
+    .Notes
         Author: Jeff Buenting
         Date: 2016 FEB 11
 #>
@@ -601,9 +604,7 @@ Function New-AXNMMaintenanceSchedule {
                 Write-Verbose "Adding Maintenace schedule for rule: $($Rule.Displayname)"
                 Write-Verbose "New Maintenance Schedule: $NewMaintSched"
                 # ----- Load Rule from the Database modify and save
-                #$Node = $NMConfig.LoadNode( $Rule.ID )
-                # ----- $Rule should already be a Rule Object.  No need to retrieve it again.
-                $Node = $Rule
+                $Node = $NMConfig.LoadNode( $Rule.ID )
 
                 # ----- Check if there is an existing maint sched.
                 # ----- Again with the 0 issue when the list is blank
@@ -750,7 +751,7 @@ Function Remove-AXNMMaintenanceSchedule {
                 
                 }
                 elseif ( $M.Scope -ne 'Global' ) {
-                    Write-Verbose "No Rule specified.  Taking rule from Schedule object scope"
+                    Write-Verbose "No Rule specified.  Taking rule from Schedule object scope : $($M.Scope)"
 
                     $RuleCheck = Get-AXNMRule | where Displayname -eq $M.Scope
 
